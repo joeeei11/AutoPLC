@@ -1,96 +1,124 @@
-import type { Brand, LLM } from "../api";
-import { DEMO_SCENES } from "../demos";
+import type { Brand, ChatMessage, IOSignal, LLM } from "../api";
+import { ChatTab } from "./ChatTab";
+import { GenerateTab } from "./GenerateTab";
+import { IOTableTab } from "./IOTableTab";
+
+export type LeftTab = "generate" | "chat" | "iotable";
 
 interface Props {
+  activeTab: LeftTab;
+  onTabChange: (tab: LeftTab) => void;
   description: string;
   brand: Brand;
   llm: LLM;
+  stCode: string;
   loading: boolean;
   error: string | null;
+  ioSignals: IOSignal[];
+  chatMessages: ChatMessage[];
   onDescriptionChange: (v: string) => void;
   onBrandChange: (v: Brand) => void;
   onLLMChange: (v: LLM) => void;
   onGenerate: () => void;
   onDemoLoad: (index: number) => void;
+  onFillDescription: (summary: string) => void;
+  onIOSignalsChange: (signals: IOSignal[]) => void;
+  onSwitchToIOTable: () => void;
+  onChatMessagesChange: (messages: ChatMessage[]) => void;
 }
 
 export function LeftPanel({
+  activeTab,
+  onTabChange,
   description,
   brand,
   llm,
+  stCode,
   loading,
   error,
+  ioSignals,
+  chatMessages,
   onDescriptionChange,
   onBrandChange,
   onLLMChange,
   onGenerate,
   onDemoLoad,
+  onFillDescription,
+  onIOSignalsChange,
+  onSwitchToIOTable,
+  onChatMessagesChange,
 }: Props) {
   return (
     <aside className="left-panel">
-      <h2 className="panel-title">PLC 逻辑生成</h2>
-
-      <div className="demo-section">
-        <span className="field-label">Demo 场景</span>
-        <div className="demo-buttons" role="group" aria-label="Demo 场景">
-          {DEMO_SCENES.map((scene, i) => (
-            <button
-              key={i}
-              className="demo-btn"
-              onClick={() => onDemoLoad(i)}
-              title={scene.description}
-              aria-label={`加载 Demo：${scene.label}`}
-            >
-              {scene.label}
-            </button>
-          ))}
-        </div>
+      <div className="left-tabs" role="tablist">
+        <button
+          className={`left-tab${activeTab === "generate" ? " left-tab--active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "generate"}
+          onClick={() => onTabChange("generate")}
+        >
+          生成
+        </button>
+        <button
+          className={`left-tab${activeTab === "chat" ? " left-tab--active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "chat"}
+          onClick={() => onTabChange("chat")}
+        >
+          对话
+        </button>
+        <button
+          className={`left-tab${activeTab === "iotable" ? " left-tab--active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "iotable"}
+          onClick={() => onTabChange("iotable")}
+        >
+          I/O 表
+          {ioSignals.length > 0 && (
+            <span className="tab-badge" aria-label={`${ioSignals.length} 条信号`}>
+              {ioSignals.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      <label className="field-label">控制逻辑描述</label>
-      <textarea
-        className="description-input"
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        placeholder="例如：电机在温度超过 80°C 时停止，延时 5 秒后重启"
-        rows={6}
-      />
+      <div className={`left-panel-content${activeTab === "generate" ? "" : " left-panel-content--hidden"}`}>
+        <GenerateTab
+          description={description}
+          brand={brand}
+          llm={llm}
+          loading={loading}
+          error={error}
+          onDescriptionChange={onDescriptionChange}
+          onBrandChange={onBrandChange}
+          onLLMChange={onLLMChange}
+          onGenerate={onGenerate}
+          onDemoLoad={onDemoLoad}
+        />
+      </div>
 
-      <label className="field-label">目标品牌 / 格式</label>
-      <select
-        className="select"
-        value={brand}
-        onChange={(e) => onBrandChange(e.target.value as Brand)}
-      >
-        <option value="generic">通用 ST（IEC 61131-3）</option>
-        <option value="siemens">西门子 SCL</option>
-        <option value="rockwell">罗克韦尔 L5X</option>
-      </select>
+      <div className={`left-panel-chat-area${activeTab === "chat" ? "" : " left-panel-chat-area--hidden"}`}>
+        <ChatTab
+          llm={llm}
+          description={description}
+          stCode={stCode}
+          ioSignals={ioSignals}
+          onFillDescription={onFillDescription}
+          onIOSignalsChange={onIOSignalsChange}
+          onSwitchToIOTable={onSwitchToIOTable}
+          onMessagesChange={onChatMessagesChange}
+        />
+      </div>
 
-      <label className="field-label">语言模型</label>
-      <select
-        className="select"
-        value={llm}
-        onChange={(e) => onLLMChange(e.target.value as LLM)}
-      >
-        <option value="claude">Claude</option>
-        <option value="openai">OpenAI</option>
-      </select>
-
-      <button
-        className="generate-btn"
-        onClick={onGenerate}
-        disabled={loading}
-      >
-        {loading ? "生成中…" : "生成梯形图"}
-      </button>
-
-      {error && (
-        <div className="error-box" role="alert">
-          <strong>错误：</strong>
-          <span>{error}</span>
-        </div>
-      )}
+      <div className={`left-panel-content${activeTab === "iotable" ? "" : " left-panel-content--hidden"}`}
+           style={{ padding: 0, gap: 0 }}>
+        <IOTableTab
+          signals={ioSignals}
+          llm={llm}
+          chatMessages={chatMessages}
+          onChange={onIOSignalsChange}
+        />
+      </div>
     </aside>
   );
 }

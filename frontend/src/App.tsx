@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LeftPanel } from "./components/LeftPanel";
+import type { LeftTab } from "./components/LeftPanel";
 import { SvgPanel } from "./components/SvgPanel";
 import { RightPanel } from "./components/RightPanel";
 import {
@@ -7,6 +8,8 @@ import {
   validatePLC,
   renderPLC,
   type Brand,
+  type ChatMessage,
+  type IOSignal,
   type LLM,
   type PLCProgram,
   type ValidationErrorItem,
@@ -14,10 +17,14 @@ import {
 import { DEMO_SCENES } from "./demos";
 import "./App.css";
 
+type Theme = "dark" | "light";
+
 export default function App() {
+  const [theme, setTheme] = useState<Theme>("dark");
   const [description, setDescription] = useState("");
   const [brand, setBrand] = useState<Brand>("generic");
   const [llm, setLLM] = useState<LLM>("claude");
+  const [leftTab, setLeftTab] = useState<LeftTab>("generate");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +35,13 @@ export default function App() {
 
   const [rerendering, setRerendering] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrorItem[]>([]);
+
+  const [ioSignals, setIOSignals] = useState<IOSignal[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   async function handleGenerate() {
     if (!description.trim()) {
@@ -40,7 +54,7 @@ export default function App() {
     setValidationErrors([]);
 
     try {
-      const result = await generatePLC({ description, brand, llm });
+      const result = await generatePLC({ description, brand, llm, io_signals: ioSignals });
       setPlcProgram(result.plc_program);
       setSvg(result.svg);
       setStCode(result.plc_program.st_code);
@@ -64,9 +78,9 @@ export default function App() {
       if (result.errors.length > 0) {
         setValidationErrors(result.errors);
       } else {
-        const gen = await generatePLC({ description, brand, llm });
-        setSvg(gen.svg);
-        setPlcProgram(gen.plc_program);
+        const rendered = await renderPLC(updated);
+        setSvg(rendered.svg);
+        setPlcProgram(updated);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "重新渲染失败");
@@ -91,31 +105,62 @@ export default function App() {
     }
   }
 
+  function handleFillDescription(summary: string) {
+    setDescription(summary);
+    setLeftTab("generate");
+  }
+
   return (
-    <div className="app-layout">
-      <LeftPanel
-        description={description}
-        brand={brand}
-        llm={llm}
-        loading={loading}
-        error={error}
-        onDescriptionChange={setDescription}
-        onBrandChange={setBrand}
-        onLLMChange={setLLM}
-        onGenerate={handleGenerate}
-        onDemoLoad={handleDemoLoad}
-      />
+    <>
+      <header className="app-topbar">
+        <div className="app-brand">
+          <span className="app-brand-mark" aria-hidden="true">⬡</span>
+          <span className="app-brand-name">PLCLogicGen</span>
+        </div>
+        <button
+          className="theme-toggle"
+          onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+          aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
+        >
+          {theme === "dark" ? "☀ 亮色" : "◑ 暗色"}
+        </button>
+      </header>
 
-      <SvgPanel svg={svg} />
+      <div className="app-layout">
+        <LeftPanel
+          activeTab={leftTab}
+          onTabChange={setLeftTab}
+          description={description}
+          brand={brand}
+          llm={llm}
+          stCode={stCode}
+          loading={loading}
+          error={error}
+          ioSignals={ioSignals}
+          chatMessages={chatMessages}
+          onDescriptionChange={setDescription}
+          onBrandChange={setBrand}
+          onLLMChange={setLLM}
+          onGenerate={handleGenerate}
+          onDemoLoad={handleDemoLoad}
+          onFillDescription={handleFillDescription}
+          onIOSignalsChange={setIOSignals}
+          onSwitchToIOTable={() => setLeftTab("iotable")}
+          onChatMessagesChange={setChatMessages}
+        />
 
-      <RightPanel
-        stCode={stCode}
-        plcProgram={plcProgram}
-        validationErrors={validationErrors}
-        rerendering={rerendering}
-        onChange={setStCode}
-        onRerender={handleRerender}
-      />
-    </div>
+        <SvgPanel svg={svg} />
+
+        <RightPanel
+          stCode={stCode}
+          plcProgram={plcProgram}
+          validationErrors={validationErrors}
+          rerendering={rerendering}
+          theme={theme}
+          onChange={setStCode}
+          onRerender={handleRerender}
+        />
+      </div>
+    </>
   );
 }
