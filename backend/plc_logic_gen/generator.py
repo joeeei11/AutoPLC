@@ -1,12 +1,11 @@
 """LLM-powered PLC program generator.
 
 Uses pydantic-ai for structured output enforcement and supports both
-Anthropic Claude and OpenAI models via litellm-style model name routing.
+Anthropic Claude and OpenAI models via provider:model name format.
 """
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,6 +22,7 @@ When given a control logic description, produce a complete PLCProgram JSON objec
 VARIABLE RULES:
 - Declare every variable referenced by Contact or Coil elements in the variables list
 - Use lowercase with underscores: motor_run, temp_sensor, start_btn
+- If an I/O Table is provided in the description, use the exact tag names from that table as variable names
 - Use BOOL for digital I/O, INT/REAL for numeric signals, TIME for timer presets
 - FunctionBlock input/output variables do NOT need to be in the variables list
 
@@ -54,6 +54,31 @@ SAFETY RULES:
 - Never negate or bypass emergency stop inputs for safety-critical coils
 - Safety interlocks must always be in series with the controlled output
 
+ST CODE SAFETY ANNOTATION RULES:
+- For any rung or logic block containing variables whose names include e_stop, estop, emergency, or safety,
+  or any NC contact used for output protection, add a comment in the format:
+  (*Safety interlock: <brief description of what is being protected>*)
+  immediately before the relevant IF statement or assignment in st_code
+
+ST CODE STRUCTURE RULES (FB/DB layering):
+- When the description involves multiple devices or multiple process sections, organize st_code using:
+  FUNCTION_BLOCK FB_<DeviceName>
+  VAR_INPUT ... END_VAR
+  VAR_OUTPUT ... END_VAR
+  VAR ... END_VAR
+  BEGIN
+    (* device logic *)
+  END_FUNCTION_BLOCK
+
+  PROGRAM OB1
+  VAR
+    FB_<DeviceName>_inst : FB_<DeviceName>;
+  END_VAR
+  BEGIN
+    FB_<DeviceName>_inst();
+  END_PROGRAM
+- PLCProgram.st_code may contain multiple FUNCTION_BLOCK and PROGRAM blocks
+
 OUTPUT RULES:
 - Set st_code to the equivalent IEC 61131-3 Structured Text representation
 - Ensure LD structure and st_code are semantically consistent
@@ -73,25 +98,10 @@ class GenerationError:
     details: list[str] = field(default_factory=list)
 
 
-def _resolve_model_name(model_name: str) -> str:
-    """Convert litellm-style model names to pydantic-ai provider:model format.
-
-    Examples:
-        "claude-sonnet-4-6"  -> "anthropic:claude-sonnet-4-6"
-        "gpt-4o"             -> "openai:gpt-4o"
-        "anthropic:..."      -> unchanged
-    """
-    if ":" in model_name:
-        return model_name
-    if "claude" in model_name.lower():
-        return f"anthropic:{model_name}"
-    return f"openai:{model_name}"
-
-
 def generate_plc_program(
     description: str,
     brand: str = "generic",
-    model_name: str = "claude-sonnet-4-6",
+    model_name: str = "anthropic:claude-sonnet-4-6",
     *,
     _agent: Any = None,
 ) -> PLCProgram | GenerationError:
@@ -100,7 +110,7 @@ def generate_plc_program(
     Args:
         description: Natural language control logic description (Chinese or English).
         brand: Target PLC brand hint — "generic", "siemens", or "rockwell".
-        model_name: LLM in litellm format — e.g. "claude-sonnet-4-6" or "gpt-4o".
+        model_name: pydantic-ai provider:model format — e.g. "anthropic:claude-sonnet-4-6".
         _agent: Inject a pre-built agent (or mock) for testing; skips model creation.
 
     Returns:
@@ -113,9 +123,8 @@ def generate_plc_program(
         )
 
     if _agent is None:
-        resolved = _resolve_model_name(model_name)
         agent: Agent[None, PLCProgram] = Agent(
-            resolved,
+            model_name,
             output_type=PLCProgram,
             system_prompt=SYSTEM_PROMPT,
         )
