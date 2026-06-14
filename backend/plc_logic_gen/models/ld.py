@@ -88,7 +88,7 @@ class Rung(BaseModel):
 
     @model_validator(mode="after")
     def validate_single_coil(self) -> "Rung":
-        coil_count = _count_coils(self.elements)
+        coil_count = count_coils(self.elements)
         if coil_count == 0:
             raise ValueError("Rung must have at least one Coil output")
         if coil_count > 1:
@@ -96,14 +96,14 @@ class Rung(BaseModel):
         return self
 
 
-def _count_coils(elements: list[Any]) -> int:
+def count_coils(elements: list[Any]) -> int:
     count = 0
     for elem in elements:
         if isinstance(elem, Coil):
             count += 1
         elif isinstance(elem, Branch):
             for path in elem.paths:
-                count += _count_coils(path)
+                count += count_coils(path)
     return count
 
 
@@ -119,3 +119,23 @@ class PLCProgram(BaseModel):
     variables: list[Variable] = Field(default_factory=list)
     rungs: list[Rung] = Field(default_factory=list)
     st_code: str = ""
+
+
+class SignalType(str, Enum):
+    DI = "DI"
+    DO = "DO"
+    AI = "AI"
+    AO = "AO"
+
+
+class IOSignal(BaseModel):
+    tag: str = Field(min_length=1)
+    name: str = ""
+    signal_type: SignalType
+    plc_address: str = ""
+    module_no: str = ""
+    channel_no: str = ""
+    range_low: float | None = None
+    range_high: float | None = None
+    engineering_unit: str = ""
+    comment: str = ""
