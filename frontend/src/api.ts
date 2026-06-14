@@ -3,6 +3,35 @@
 export type ContactType = "NO" | "NC";
 export type Brand = "generic" | "siemens" | "rockwell";
 export type LLM = "claude" | "openai";
+export type SignalType = "DI" | "DO" | "AI" | "AO";
+
+export interface IOSignal {
+  tag: string;
+  name: string;
+  signal_type: SignalType;
+  plc_address: string;
+  module_no: string;
+  channel_no: string;
+  range_low: number | null;
+  range_high: number | null;
+  engineering_unit: string;
+  comment: string;
+}
+
+export function emptySignal(): IOSignal {
+  return {
+    tag: "",
+    name: "",
+    signal_type: "DI",
+    plc_address: "",
+    module_no: "",
+    channel_no: "",
+    range_low: null,
+    range_high: null,
+    engineering_unit: "",
+    comment: "",
+  };
+}
 
 export interface Contact {
   type: ContactType;
@@ -49,6 +78,7 @@ export interface GenerateRequest {
   description: string;
   brand: Brand;
   llm: LLM;
+  io_signals?: IOSignal[];
 }
 
 export interface GenerateResponse {
@@ -159,4 +189,132 @@ export async function exportPLC(plcProgram: PLCProgram, brand: Brand): Promise<v
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  description: string;
+  st_code: string;
+  llm: LLM;
+}
+
+export async function streamChat(
+  req: ChatRequest,
+  onChunk: (text: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    signal,
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop()!;
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6);
+      if (data === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(data) as { delta?: string; error?: string };
+        if (parsed.error) throw new Error(parsed.error);
+        if (parsed.delta) onChunk(parsed.delta);
+      } catch (e) {
+        if (e instanceof SyntaxError) continue;
+        throw e;
+      }
+    }
+  }
+}
+
+export async function generateIOTable(
+  messages: ChatMessage[],
+  llm: LLM
+): Promise<IOSignal[]> {
+  const res = await fetch(`${BASE_URL}/api/io-table/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, llm }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? `HTTP ${res.status}`);
+  }
+  const data = await res.json() as { signals: IOSignal[] };
+  return data.signals;
+}
+
+export async function exportIOTableExcel(signals: IOSignal[]): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/io-table/export-excel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signals }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "io_table.xlsx";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function streamFDS(
+  messages: ChatMessage[],
+  ioSignals: IOSignal[],
+  llm: LLM,
+  onChunk: (text: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/fds/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, io_signals: ioSignals, llm }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop()!;
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6);
+      if (data === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(data) as { delta?: string; error?: string };
+        if (parsed.error) throw new Error(parsed.error);
+        if (parsed.delta) onChunk(parsed.delta);
+      } catch (e) {
+        if (e instanceof SyntaxError) continue;
+        throw e;
+      }
+    }
+  }
 }
