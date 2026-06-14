@@ -1,0 +1,7 @@
+# 构建上下文排除（加快构建、避免缓存失效）
+node_modules/
+dist/
+.git/
+.vscode/
+*.log
+.DS_Store

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "plc-logic-gen": {
+      "command": "python",
+      "args": ["mcp_server/server.py"],
+      "env": {
+        "BACKEND_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

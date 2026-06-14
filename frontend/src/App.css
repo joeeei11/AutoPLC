@@ -1,0 +1,463 @@
+/* 重置 Vite 默认样式，使用全屏三栏布局 */
+
+:root {
+  --bg: #1a1b26;
+  --panel-bg: #1e2030;
+  --border: #2e3042;
+  --text: #c0caf5;
+  --text-dim: #787c99;
+  --text-heading: #e0e4f4;
+  --accent: #7aa2f7;
+  --accent-hover: #89b4fa;
+  --btn-bg: #364a82;
+  --btn-hover: #4a5fb0;
+  --error-bg: #3d1a1a;
+  --error-border: #a84040;
+  --error-text: #f38ba8;
+  --sans: system-ui, "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* ── 主布局 ── */
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── 左侧面板 ── */
+
+.left-panel {
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin-bottom: 4px;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: block;
+}
+
+.description-input {
+  width: 100%;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  outline: none;
+  min-height: 110px;
+}
+
+.description-input:focus {
+  border-color: var(--accent);
+}
+
+.description-input::placeholder {
+  color: var(--text-dim);
+}
+
+.select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  cursor: pointer;
+}
+
+.select:focus {
+  border-color: var(--accent);
+}
+
+.generate-btn {
+  width: 100%;
+  background: var(--btn-bg);
+  color: #c8d8ff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 0;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: var(--btn-hover);
+}
+
+.generate-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Demo 场景 ── */
+
+.demo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demo-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.demo-btn {
+  background: var(--bg);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.demo-btn:hover {
+  background: var(--btn-bg);
+  color: #c8d8ff;
+  border-color: var(--accent);
+}
+
+.error-box {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+  color: var(--error-text);
+  font-size: 13px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* ── 中间 SVG 面板 ── */
+
+.svg-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.svg-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  cursor: grab;
+}
+
+.svg-scroll:active {
+  cursor: grabbing;
+}
+
+.svg-inner {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.svg-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+.zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.zoom-controls button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.zoom-controls button:hover {
+  color: var(--accent-hover);
+}
+
+/* ── 右侧面板 ── */
+
+.right-panel {
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rerender-btn {
+  background: var(--btn-bg);
+  color: #c8d8ff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rerender-btn:hover:not(:disabled) {
+  background: var(--btn-hover);
+}
+
+.rerender-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.monaco-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+
+.validation-errors {
+  list-style: none;
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.validation-error-item {
+  font-size: 12px;
+  color: var(--error-text);
+  line-height: 1.4;
+}
+
+/* ── 导出栏 ── */
+
+.export-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.export-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-right: 4px;
+}
+
+.export-btn {
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: var(--btn-bg);
+  color: #c8d8ff;
+}
+
+.export-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+/* ── 仿真面板 ── */
+
+.sim-panel {
+  border-top: 1px solid var(--border);
+  padding: 10px 16px 12px;
+  flex-shrink: 0;
+}
+
+.sim-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-right: 4px;
+}
+
+.sim-btn {
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.sim-btn:hover:not(:disabled) {
+  background: var(--btn-bg);
+  color: #c8d8ff;
+}
+
+.sim-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+.sim-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.sim-status--compiling {
+  background: #2e2a10;
+  color: #e8c060;
+  border: 1px solid #7a6020;
+}
+
+.sim-status--running {
+  background: #0f2e1a;
+  color: #73c990;
+  border: 1px solid #3a7a5a;
+}
+
+.sim-status--error {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+}
+
+.sim-error {
+  font-size: 12px;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.sim-table-wrapper {
+  margin-top: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.sim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.sim-table th {
+  background: var(--bg);
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 5px 10px;
+  text-align: left;
+  position: sticky;
+  top: 0;
+}
+
+.sim-table td {
+  padding: 4px 10px;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  font-family: monospace;
+}
+
+.sim-table tbody tr:hover {
+  background: rgba(122, 162, 247, 0.05);
+}
+
+.sim-empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 10px;
+}
